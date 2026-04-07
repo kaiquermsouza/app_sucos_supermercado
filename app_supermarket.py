@@ -33,14 +33,14 @@ def conectar_google():
         "https://www.googleapis.com/auth/drive"
     ]
 
-    # 👉 tenta usar Secrets (produção)
-    if "gcp" in st.secrets:
+    try:
+        # 🔐 PRODUÇÃO (Streamlit Cloud)
         creds = Credentials.from_service_account_info(
             st.secrets["gcp"],
             scopes=scope
         )
-    else:
-        # 👉 fallback local (se estiver rodando no PC)
+    except Exception:
+        # 💻 LOCAL (seu PC)
         creds = Credentials.from_service_account_file(
             "credenciais.json",
             scopes=scope
@@ -102,27 +102,31 @@ if menu == "Registro":
 
     with col2:
         if v7 > 0:
-            st.error("⚠️ Atenção: Produtos próximos do vencimento!")
+            st.error("⚠️ Produtos próximos do vencimento!")
         else:
             st.success("✅ Estoque saudável")
 
     if st.button("💾 Salvar Registro", use_container_width=True):
-        sheet = conectar_google()
+        try:
+            sheet = conectar_google()
 
-        nova_linha = [
-            str(data_producao),
-            loja,
-            produto,
-            tamanho,
-            quantidade,
-            v7,
-            v15,
-            v30
-        ]
+            nova_linha = [
+                str(data_producao),
+                loja,
+                produto,
+                tamanho,
+                quantidade,
+                v7,
+                v15,
+                v30
+            ]
 
-        sheet.append_row(nova_linha)
+            sheet.append_row(nova_linha)
 
-        st.success("✅ Registro salvo com sucesso!")
+            st.success("✅ Registro salvo com sucesso!")
+
+        except Exception as e:
+            st.error(f"Erro ao salvar: {e}")
 
 # =========================
 # DASHBOARD
@@ -154,12 +158,17 @@ if menu == "Dashboard":
 
     st.title("📊 Dashboard Gerencial")
 
-    df = carregar_dados()
+    try:
+        df = carregar_dados()
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        st.stop()
 
     if df.empty:
         st.warning("Sem dados ainda.")
         st.stop()
 
+    # KPIs
     total_estoque = df["quantidade"].sum()
     total_v7 = df["v7"].sum()
     total_lojas = df["loja"].nunique()
@@ -185,6 +194,8 @@ if menu == "Dashboard":
     st.markdown("---")
 
     st.subheader("📈 Evolução de Registros")
+
     df["data"] = pd.to_datetime(df["data"])
     evolucao = df.groupby("data")["quantidade"].sum()
+
     st.line_chart(evolucao)
