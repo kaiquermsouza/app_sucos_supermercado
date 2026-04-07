@@ -14,35 +14,38 @@ st.set_page_config(
 )
 
 # =========================
-# ESTILO (CSS)
+# ESTILO
 # =========================
 st.markdown("""
 <style>
 .main {
     background-color: #f5f7fa;
 }
-.card {
-    padding: 20px;
-    border-radius: 12px;
-    background-color: white;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
-}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# GOOGLE SHEETS
+# GOOGLE SHEETS (SEGURO)
 # =========================
 def conectar_google():
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    
-    creds = Credentials.from_service_account_file(
-        "credenciais.json", scopes=scope
-    )
-    
+
+    # 👉 tenta usar Secrets (produção)
+    if "gcp" in st.secrets:
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp"],
+            scopes=scope
+        )
+    else:
+        # 👉 fallback local (se estiver rodando no PC)
+        creds = Credentials.from_service_account_file(
+            "credenciais.json",
+            scopes=scope
+        )
+
     client = gspread.authorize(creds)
     return client.open("controle_sucos").sheet1
 
@@ -59,7 +62,7 @@ st.sidebar.title("🥤 Controle de Sucos")
 menu = st.sidebar.radio("Menu", ["Registro", "Dashboard"])
 
 # =========================
-# ABA REGISTRO
+# REGISTRO
 # =========================
 if menu == "Registro":
     
@@ -122,7 +125,7 @@ if menu == "Registro":
         st.success("✅ Registro salvo com sucesso!")
 
 # =========================
-# ABA DASHBOARD
+# DASHBOARD
 # =========================
 if menu == "Dashboard":
 
@@ -157,16 +160,15 @@ if menu == "Dashboard":
         st.warning("Sem dados ainda.")
         st.stop()
 
-    # KPIs
     total_estoque = df["quantidade"].sum()
     total_v7 = df["v7"].sum()
     total_lojas = df["loja"].nunique()
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("📦 Estoque Total", f"{total_estoque}")
-    col2.metric("⚠️ Vencendo (7 dias)", f"{total_v7}")
-    col3.metric("🏪 Lojas Ativas", f"{total_lojas}")
+    col1.metric("📦 Estoque Total", total_estoque)
+    col2.metric("⚠️ Vencendo (7 dias)", total_v7)
+    col3.metric("🏪 Lojas Ativas", total_lojas)
 
     st.markdown("---")
 
